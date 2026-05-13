@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Engineering: Build Fast, Ship Faster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+:root {
+  --bg-deep: #030508;
+  --bg-gradient: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+  --glass-surface: rgba(255,255,255,0.03);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-highlight: rgba(255,255,255,0.15);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.36);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-blue: #38bdf8;
+  --glow-blue: 0 0 20px rgba(56,189,248,0.4);
+  --accent-purple: #c084fc;
+  --glow-purple: 0 0 20px rgba(192,132,252,0.4);
+  --accent-amber: #fbbf24;
+  --glow-amber: 0 0 20px rgba(251,191,36,0.4);
+  --accent-green: #34d399;
+  --glow-green: 0 0 20px rgba(52,211,153,0.4);
+  --accent-red: #f87171;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Source Sans 3', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --slide-padding: 56px 72px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--font-body);color:var(--text-primary);background:var(--bg-deep);}
+
+body::before{
+  content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+  background:
+    radial-gradient(circle at 30% 40%,rgba(56,189,248,0.07) 0%,transparent 40%),
+    radial-gradient(circle at 78% 22%,rgba(192,132,252,0.07) 0%,transparent 30%),
+    radial-gradient(circle at 55% 80%,rgba(251,191,36,0.04) 0%,transparent 25%);
+  animation:drift 60s linear infinite;z-index:0;pointer-events:none;
+}
+@keyframes drift{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+@keyframes slideUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes pulseRing{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5;}50%{transform:translate(-50%,-50%) scale(1.18);opacity:1;}}
+@keyframes shimmer{0%{left:-100%;}100%{left:100%;}}
+
+#app{width:100vw;height:100vh;position:relative;z-index:1;}
+
+/* ── Slide Viewer ── */
+.slide-viewer{width:100%;height:100%;position:relative;}
+.slide-container{
+  width:100%;height:100%;position:absolute;top:0;left:0;
+  opacity:0;transform:scale(0.98) translateY(12px);
+  transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1);
+  pointer-events:none;
+}
+.slide-container.active{opacity:1;transform:scale(1) translateY(0);pointer-events:all;}
+
+/* ── Shared layout base ── */
+.slide-bg{width:100%;height:100%;background:var(--bg-gradient);position:relative;}
+.slide-content{
+  width:100%;height:100%;padding:var(--slide-padding);
+  position:relative;z-index:10;display:flex;flex-direction:column;
+}
+
+/* ── Title Slide ── */
+.layout-title .slide-content{align-items:center;justify-content:center;text-align:center;gap:1.4rem;}
+.layout-title h1{
+  font-family:var(--font-display);font-size:clamp(3.2rem,7vw,6rem);font-weight:700;letter-spacing:-.03em;
+  background:linear-gradient(135deg,#fff 0%,#cbd5e1 55%,var(--accent-blue) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 40px rgba(56,189,248,.3));
+  animation:slideUp .8s cubic-bezier(.16,1,.3,1) both;
+}
+.layout-title .subtitle{
+  font-size:clamp(1.1rem,2.2vw,1.65rem);color:var(--text-secondary);font-weight:300;letter-spacing:.02em;
+  animation:slideUp .8s .14s cubic-bezier(.16,1,.3,1) both;
+}
+.layout-title .slide-footer{
+  position:absolute;bottom:50px;left:0;right:0;text-align:center;
+  font-size:.85rem;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;
+  animation:slideUp .8s .28s cubic-bezier(.16,1,.3,1) both;
+}
+.title-glow-ring{
+  position:absolute;width:520px;height:520px;border-radius:50%;top:50%;left:50%;
+  background:radial-gradient(circle,rgba(56,189,248,.08) 0%,transparent 70%);
+  animation:pulseRing 4s ease-in-out infinite;pointer-events:none;
+}
+.title-badge{
+  display:inline-flex;align-items:center;gap:.5rem;padding:.35rem 1.1rem;
+  background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.3);border-radius:100px;
+  font-size:.82rem;color:var(--accent-blue);letter-spacing:.05em;
+  animation:slideUp .8s .04s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* ── Content + Simulation ── */
+.layout-split .slide-content{padding:46px 64px;}
+.layout-split h2{
+  font-family:var(--font-display);font-size:clamp(1.6rem,3vw,2.5rem);font-weight:600;
+  color:var(--accent-blue);text-shadow:var(--glow-blue);margin-bottom:1.2rem;flex-shrink:0;
+  animation:slideUp .6s cubic-bezier(.16,1,.3,1) both;
+}
+.col-split{display:flex;flex:1;gap:1.8rem;min-height:0;}
+.col-text{
+  flex:0 0 40%;display:flex;flex-direction:column;justify-content:center;
+  animation:slideUp .6s .1s cubic-bezier(.16,1,.3,1) both;
+}
+.col-text ul{list-style:none;}
+.col-text li{
+  font-size:clamp(.8rem,1.35vw,1rem);line-height:1.65;color:var(--text-secondary);
+  margin-bottom:.85rem;padding-left:1.1rem;position:relative;
+}
+.col-text li::before{content:'›';position:absolute;left:0;color:var(--accent-blue);}
+.col-text p{font-size:clamp(.78rem,1.2vw,.92rem);color:var(--text-muted);font-style:italic;margin-top:.4rem;}
+.col-text strong{color:var(--text-primary);font-weight:600;}
+.col-text code{
+  font-family:var(--font-mono);font-size:.82em;color:var(--accent-amber);
+  background:rgba(251,191,36,.1);border-radius:4px;padding:1px 5px;
+}
+.col-visual{
+  flex:1;background:var(--glass-surface);backdrop-filter:blur(10px);
+  border:1px solid var(--glass-border);border-radius:20px;overflow:hidden;position:relative;
+  animation:slideUp .6s .2s cubic-bezier(.16,1,.3,1) both;
+}
+
+/* ── Full Simulation ── */
+.layout-full .slide-content{padding:0;}
+.sim-title-badge{
+  position:absolute;top:28px;left:56px;z-index:20;pointer-events:none;
+  font-family:var(--font-display);font-size:clamp(1.3rem,2.4vw,1.9rem);font-weight:600;
+  color:var(--accent-blue);text-shadow:var(--glow-blue);
+  animation:slideUp .6s cubic-bezier(.16,1,.3,1) both;
+}
+.full-sim-host{width:100%;height:100%;position:relative;}
+.layout-full.epic .slide-bg{
+  background:radial-gradient(ellipse at 50% 60%,rgba(56,189,248,.07) 0%,transparent 55%),
+             var(--bg-gradient);
+}
+
+/* ── Code Slide ── */
+.layout-code .slide-content{padding:46px 64px;}
+.layout-code h2{
+  font-family:var(--font-display);font-size:clamp(1.5rem,2.7vw,2.2rem);font-weight:600;
+  color:var(--accent-amber);text-shadow:var(--glow-amber);margin-bottom:1rem;flex-shrink:0;
+  animation:slideUp .6s cubic-bezier(.16,1,.3,1) both;
+}
+.code-visual{
+  flex:1;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);
+  border:1px solid var(--glass-border);border-radius:16px;overflow:hidden;position:relative;
+  animation:slideUp .6s .2s cubic-bezier(.16,1,.3,1) both;
+}
+.code-visual::before{
+  content:'● ● ●';position:absolute;top:13px;left:18px;
+  font-size:9px;color:var(--text-muted);letter-spacing:5px;z-index:2;pointer-events:none;
+}
+.code-visual pre{
+  margin:0!important;padding:40px 20px 20px!important;height:100%;
+  overflow-y:auto;background:transparent!important;border:none!important;
+  border-radius:0!important;box-shadow:none!important;
+}
+.code-visual pre::before{display:none!important;}
+.code-visual code{font-family:var(--font-mono)!important;font-size:clamp(.58rem,1vw,.76rem)!important;line-height:1.65!important;}
+
+/* ── Buttons ── */
+button,.btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  padding:.55rem 1.3rem;overflow:hidden;cursor:pointer;
+  background:linear-gradient(135deg,rgba(56,189,248,.15),rgba(56,189,248,.05));
+  border:1px solid rgba(56,189,248,.3);border-radius:10px;
+  color:var(--accent-blue);font-family:var(--font-body);font-size:.88rem;font-weight:600;
+  transition:all .2s ease;
+}
+button::before{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  transition:left .4s ease;
+}
+button:hover::before{left:100%;}
+button:hover{
+  background:linear-gradient(135deg,rgba(56,189,248,.25),rgba(56,189,248,.1));
+  border-color:rgba(56,189,248,.6);box-shadow:0 0 20px rgba(56,189,248,.2);
+  transform:translateY(-1px);
+}
+button:active{transform:translateY(0);}
+
+/* ── Progress Bar ── */
+#progress-bar{position:fixed;bottom:0;left:0;right:0;height:3px;z-index:100;background:rgba(255,255,255,.05);}
+#progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple));
+  transition:width .4s cubic-bezier(.16,1,.3,1);box-shadow:0 0 10px rgba(56,189,248,.5);
+}
+#slide-counter{
+  position:fixed;bottom:12px;right:18px;font-family:var(--font-mono);
+  font-size:.7rem;color:var(--text-muted);z-index:100;letter-spacing:.05em;
+}
+#key-hints{
+  position:fixed;bottom:12px;left:18px;font-family:var(--font-mono);
+  font-size:.62rem;color:var(--text-muted);z-index:100;display:flex;gap:.7rem;align-items:center;
+}
+.kbkey{padding:1px 5px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:4px;}
+
+/* ── Speaker Notes ── */
+#notes-panel{
+  position:fixed;bottom:-100%;left:0;right:0;height:28vh;max-height:240px;
+  background:rgba(2,6,23,.96);backdrop-filter:blur(20px);
+  border-top:1px solid var(--glass-border);z-index:200;
+  transition:bottom .4s cubic-bezier(.16,1,.3,1);padding:18px 60px;overflow-y:auto;
+}
+#notes-panel.open{bottom:0;}
+#notes-label{font-size:.68rem;color:var(--accent-amber);text-transform:uppercase;letter-spacing:.12em;margin-bottom:.45rem;}
+#notes-text{font-size:.95rem;color:var(--text-secondary);line-height:1.75;font-family:var(--font-body);}
+
+/* ── Overview ── */
+#overview-modal{
+  display:none;position:fixed;inset:0;background:rgba(2,6,23,.97);
+  backdrop-filter:blur(20px);z-index:300;overflow-y:auto;padding:36px 40px;
+}
+#overview-modal.open{display:block;}
+#overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:1300px;margin:0 auto;}
+.ov-card{
+  aspect-ratio:16/9;background:var(--glass-surface);border:1px solid var(--glass-border);
+  border-radius:12px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:12px;text-align:center;gap:5px;
+  transition:all .2s ease;
+}
+.ov-card:hover{border-color:var(--accent-blue);box-shadow:0 0 18px rgba(56,189,248,.2);transform:scale(1.03);}
+.ov-card.current{border-color:var(--accent-amber);box-shadow:0 0 18px rgba(251,191,36,.25);}
+.ov-num{font-size:.62rem;color:var(--text-muted);font-family:var(--font-mono);}
+.ov-title{font-size:.72rem;color:var(--text-primary);font-family:var(--font-display);font-weight:600;}
+#ov-close{
+  position:fixed;top:18px;right:28px;font-size:1.4rem;color:var(--text-muted);
+  cursor:pointer;z-index:310;background:none;border:none;padding:.3rem .7rem;
+}
+
+/* ── Go-To Modal ── */
+#goto-modal{
+  display:none;position:fixed;inset:0;background:rgba(2,6,23,.85);
+  backdrop-filter:blur(20px);z-index:400;align-items:center;justify-content:center;
+}
+#goto-modal.open{display:flex;}
+#goto-box{
+  background:rgba(15,23,42,.96);border:1px solid var(--glass-border);
+  border-radius:20px;padding:30px 38px;text-align:center;min-width:260px;
+}
+#goto-box h3{font-family:var(--font-display);font-size:1rem;color:var(--text-secondary);margin-bottom:.9rem;}
+#goto-input{
+  width:100%;padding:.65rem 1rem;background:rgba(255,255,255,.05);
+  border:1px solid var(--glass-border);border-radius:10px;color:var(--text-primary);
+  font-family:var(--font-mono);font-size:1.5rem;text-align:center;outline:none;
+  transition:border-color .2s;
+}
+#goto-input:focus{border-color:var(--accent-blue);}
+
+/* ── Toggle switches ── */
+.tog{position:relative;display:inline-block;width:42px;height:23px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-sl{
+  position:absolute;inset:0;background:rgba(255,255,255,.08);
+  border:1px solid var(--glass-border);border-radius:23px;cursor:pointer;transition:all .3s;
+}
+.tog-sl::before{
+  content:'';position:absolute;left:3px;top:3px;width:15px;height:15px;
+  background:var(--text-muted);border-radius:50%;transition:all .3s;
+}
+.tog input:checked+.tog-sl{background:rgba(52,211,153,.2);border-color:var(--accent-green);}
+.tog input:checked+.tog-sl::before{transform:translateX(19px);background:var(--accent-green);}
+
+/* ── Card flip ── */
+.flip-card{perspective:900px;cursor:pointer;}
+.flip-inner{
+  position:relative;width:100%;height:100%;
+  transform-style:preserve-3d;transition:transform .55s cubic-bezier(.16,1,.3,1);
+}
+.flip-card.flipped .flip-inner{transform:rotateY(180deg);}
+.flip-front,.flip-back{
+  position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;padding:14px;
+}
+.flip-front{background:var(--glass-surface);border:1px solid var(--glass-border);}
+.flip-back{background:rgba(10,18,40,.96);transform:rotateY(180deg);text-align:center;flex-direction:column;gap:5px;}
+
+/* ── GQL syntax colors ── */
+.gk{color:var(--accent-purple);}
+.gt{color:var(--accent-blue);}
+.gf{color:var(--accent-green);}
+.gs{color:var(--accent-amber);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="slide-viewer" id="slide-viewer"></div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="slide-counter"></div>
+  <div id="key-hints">
+    <span><span class="kbkey">←→</span> nav</span>
+    <span><span class="kbkey">S</span> notes</span>
+    <span><span class="kbkey">O</span> overview</span>
+    <span><span class="kbkey">G</span> go to</span>
+    <span><span class="kbkey">F</span> fullscreen</span>
+  </div>
+</div>
+
+<div id="notes-panel">
+  <div id="notes-label">Speaker Notes</div>
+  <div id="notes-text"></div>
+</div>
+
+<div id="overview-modal">
+  <button id="ov-close" onclick="app.toggleOverview()">✕</button>
+  <div id="overview-grid"></div>
+</div>
+
+<div id="goto-modal">
+  <div id="goto-box">
+    <h3>Go to slide</h3>
+    <input id="goto-input" type="number" min="1" max="9" placeholder="1">
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// SLIDES
+// ═══════════════════════════════════════════════════════════
+const SLIDES = [
+{
+  id:1, layout:'title',
+  title:'Vibe Engineering',
+  subtitle:'Build Fast. Ship Faster. The AI-Native Startup Playbook.',
+  footer:'Applied AI for Startups · Beta.mn Cohort',
+  notes:'Welcome everyone. Set the tone right away: in 2025, the best founders are not the best coders — they are the best AI directors. Ask the room: "Who has used AI to write code in the last week?" Then: "Who has a system for it?" This talk is about that system. Vibe Engineering is not a casual term — it means projecting clear intent into powerful tools and knowing when to redirect them. Think of yourself as a film director: you don\'t operate the camera, but your vision controls everything on screen. That skill — high-quality intent plus sharp editorial judgment — is now the highest-leverage thing a founder can develop.'
+},
+{
+  id:2, layout:'split',
+  title:'What is Vibe Engineering?',
+  content:`<ul>
+    <li><strong>Definition:</strong> Directing AI tools with high-quality intent rather than writing every line yourself</li>
+    <li><strong>Key shift:</strong> You are the <strong>architect and editor</strong> — the AI is the <strong>implementer</strong></li>
+    <li>The three layers: <strong>Ideation → Scaffolding → Refinement</strong></li>
+    <li>Your job: supply <strong>context, constraints, and taste</strong> — things AI cannot infer alone</li>
+    <li>Analogy: "You don't drive every nail yourself when building a house."</li>
+  </ul>
+  <p>"The skill isn't prompting — it's <em>knowing what to ask for</em> and <em>catching what's wrong</em>."</p>`,
+  simulation:'sim-vibe-spectrum',
+  notes:'Use the slider live. Drag from left ("I write everything") and ask who lives here. Drag to right ("I accept everything") and share the horror story: a founder shipped broken auth because they never read the AI\'s output. The sweet spot glows amber at 70%. Nail the key insight: this is not about laziness, it is about leverage. A 10x founder is not working 10x harder — they are making 10x better decisions about where to invest attention. Pause and let the audience read the pros/cons cards before moving on.'
+},
+{
+  id:3, layout:'full',
+  title:'The Vibe Engineering Stack',
+  simulation:'sim-stack',
+  notes:'Click through each layer live on stage. Start at the bottom — AI Coding — and work up. The key message: every layer replaces what used to require a separate hire or a month of research. Supabase alone replaces a backend engineer, a DBA, and a DevOps person. Pause on the pulse animation: watch the idea travel from the coding layer all the way up to distribution. Ask the room: "Six months ago, how long would this stack take to wire up?" Answer: weeks. Now: a weekend. Every tool has a generous free tier and a one-click deployment story.'
+},
+{
+  id:4, layout:'split',
+  title:'Brainstorm Like a Pro',
+  content:`<ul>
+    <li><strong>Step 1:</strong> <strong>Dump your idea</strong> into Claude or ChatGPT — no filter, full context</li>
+    <li><strong>Step 2:</strong> Ask for a <strong>one-page PRD</strong> — Problem, Users, Core Features, Non-Goals, Success Metrics</li>
+    <li><strong>Step 3:</strong> Ask for <strong>user stories</strong> in Gherkin format (Given / When / Then)</li>
+    <li><strong>Step 4:</strong> Ask it to propose a <strong>data model</strong> — tables and relationships</li>
+    <li><strong>Step 5:</strong> Paste the PRD into your IDE and say <strong>"scaffold this"</strong></li>
+  </ul>
+  <p><em>"The prompt is the new design doc."</em> Click each node for an example prompt.</p>`,
+  simulation:'sim-prompt-chain',
+  notes:'Click through the flowchart live. Each node shows a real prompt for a freelancer scheduling SaaS. The key message: this whole chain takes 30–45 minutes, and at the end you have a PRD, user stories, a data model, and a scaffold — things that used to take a week of meetings. The Copy Prompt button is intentional: let people grab these on their phones right now. Pause on Step 2: the PRD is your system context for every future AI session. Keep it updated. It is your source of truth, not Notion, not Slack — paste it at the top of every new conversation.'
+},
+{
+  id:5, layout:'code',
+  title:'Encode Your Codebase Personality',
+  content:`<ul>
+    <li><code>.cursorrules</code> / <code>CLAUDE.md</code> / <code>.windsurfrules</code> tell the AI <strong>how to think</strong> inside your repo</li>
+    <li>Cover: tech stack, naming conventions, folder structure, what <strong>NOT</strong> to do</li>
+    <li><strong>MCP servers</strong> give Claude actual tools — Supabase MCP, GitHub MCP, Figma MCP</li>
+    <li>Rule of thumb: <em>"If you've corrected the AI twice for the same thing, write a rule."</em></li>
+    <li>Three tiers: <strong>Project rules → Workspace rules → Global rules</strong></li>
+    <li>Think of it as onboarding a very fast, very literal junior developer</li>
+  </ul>
+  <p>Your rules file is a <strong>living document</strong> — update it after every session.</p>`,
+  code:`# CLAUDE.md — Vibe Engineering Starter
+# Drop this in your repo root. Update after every sprint.
+
+## Stack
+- Framework: Next.js 15 (App Router, TypeScript strict mode)
+- Styling: Tailwind CSS v4 + shadcn/ui components only
+- Database: Supabase (Postgres + RLS + Edge Functions)
+- Auth: Supabase Auth — never roll custom auth
+- Payments: Stripe Checkout + Supabase webhook handler
+- Deploy: Vercel (auto preview deploys on every PR branch)
+
+## Naming Conventions
+- Components: PascalCase in /components/{feature}/Name.tsx
+- Server actions: camelCase in /app/actions/{domain}.ts
+- DB tables: snake_case, always plural (user_profiles, tasks)
+- Hooks: useNoun pattern (useUser, useProjects, useTasks)
+- Env vars: NEXT_PUBLIC_ prefix only for client-side vars
+
+## Folder Structure
+src/
+  app/          # Next.js App Router pages and layouts
+  components/   # Shared UI (shadcn base + custom)
+  lib/          # supabase.ts, utils, constants, types
+  hooks/        # Custom React hooks
+  actions/      # Next.js server actions (no API routes)
+
+## DO NOT
+- Use inline styles — always Tailwind utility classes
+- Skip RLS — every table needs row-level security policies
+- Fetch data in useEffect — use server components instead
+- Commit .env.local or any file containing secrets
+- Use TypeScript 'any' — define proper interfaces
+- Create new UI without checking shadcn/ui components first
+- Write long useEffect chains — refactor to server actions
+
+## Supabase Patterns
+- Server components: createServerClient() from @/lib/supabase
+- Client components: createBrowserClient() only when needed
+- RLS default: authenticated users see only their own rows
+- Edge Functions: use for Stripe webhooks and email triggers
+- Storage: always use Supabase Storage, never local filesystem
+- Migrations: supabase db diff --file=migration_name
+
+## Component Patterns
+- All base UI from shadcn/ui — no reinventing buttons/inputs
+- Mobile-first breakpoints: default → sm: → md: → lg:
+- Loading: Suspense boundaries + shadcn Skeleton components
+- Errors: error.tsx boundary per route segment
+
+## Git Commit Format
+feat: add freelancer availability calendar
+fix: resolve auth redirect loop on mobile Safari
+chore: update shadcn button to new variant API
+refactor: move project queries to server component`,
+  notes:'Read one or two rules from the DO NOT section out loud — it gets laughs because everyone has hit these. The key message: this file is worth ten times the 30 minutes it takes to write, because it prevents the same AI mistake from recurring fifty times. Show of hands: who has corrected an AI for the same mistake more than twice? That mistake should be a rule. MCP servers are the power move: with Supabase MCP connected, Claude can actually query your database, run migrations, and inspect your live schema. It is pair programming with someone who has read your entire codebase and has direct database access.'
+},
+{
+  id:6, layout:'full', epic:true,
+  title:'Zero to MVP in One Day',
+  simulation:'sim-timeline',
+  notes:'Hit Play and let it auto-advance. For each phase, narrate what you would actually be doing at that moment. The emotional peak is 2:30 PM — First User. Point out that traditional dev would still be in sprint planning. The "3–4 weeks → 1 day" callout is meant to feel dramatic because it is dramatic. Ask: "Who has a side project sitting in a Figma file for six months?" This workflow is the answer. Emphasize that each AI tool handles the heavy lifting, but you are making every product decision. You are not generating code blindly — you are directing, reviewing, and merging with taste.'
+},
+{
+  id:7, layout:'split',
+  title:'Get to Customers Before You\'re Ready',
+  content:`<ul>
+    <li>The Paul Graham rule: <em>"Launch when it's embarrassing."</em></li>
+    <li><strong>Landing page in 20 min:</strong> v0.dev + Vercel one-click deploy</li>
+    <li><strong>Waitlist in 5 min:</strong> Supabase table + simple form component</li>
+    <li><strong>Analytics in 10 min:</strong> PostHog — one script tag, done</li>
+    <li><strong>Payments in 30 min:</strong> Stripe Checkout via Supabase Edge Function</li>
+    <li><strong>Email in 15 min:</strong> Loops or Resend, triggered from Supabase webhook</li>
+  </ul>
+  <p>Total time to a <strong>production-ready distribution stack: ~80 minutes.</strong> Toggle each item.</p>`,
+  simulation:'sim-distribution',
+  notes:'Toggle each checklist item live. Let the confetti fire when all five are on — pause for the audience reaction. The point: every one of these used to require a separate vendor evaluation, a credit card approval meeting, and a sprint. Now it is a toggle. Challenge the founders directly: your MVP does not need to be perfect. It needs to be in front of real people who will pay real money — or tell you exactly why they will not. That feedback is worth more than two months of additional polish. The 80-minute number is conservative; PostHog is literally one script tag.'
+},
+{
+  id:8, layout:'split',
+  title:'Give AI a Map of Your Codebase',
+  content:`<ul>
+    <li>AI writes better code when it understands <strong>how your files connect</strong> — not just what they do</li>
+    <li>Every codebase is a graph: files and functions are <strong>nodes</strong>, imports and calls are <strong>edges</strong></li>
+    <li>The most-connected nodes are your <strong>hot zones</strong> — they need the most detail in your rules file</li>
+    <li><strong>GitHub MCP</strong> gives Claude live access to your graph — it can trace imports, find callers, navigate structure</li>
+    <li>Pattern: <strong>draw the architecture first → describe it in CLAUDE.md → scaffold within it</strong></li>
+    <li>Giving AI a map is the difference between a junior dev who gets lost and one who ships confidently</li>
+  </ul>
+  <p>Click any node to highlight its connections. Drag to explore. Node size = connection count.</p>`,
+  simulation:'sim-codebase-graph',
+  notes:'Click around the graph live. Point out the "hot" nodes — the ones with the most connections. Those are your supabase.ts, your useUser hook, your layout.tsx. Ask the audience: does your AI tool know which files these are? Does your CLAUDE.md describe them? The insight is simple: a map is not just for humans. When Claude knows your architecture, it stops suggesting workarounds and starts suggesting the right file in the right place. GitHub MCP makes this automatic — Claude can actually navigate your repo in real time. This is a concrete, immediate action they can take today: map their codebase and put the key nodes in CLAUDE.md.'
+},
+{
+  id:9, layout:'full', epic:true,
+  title:'The 10 Rules of Vibe Engineering',
+  simulation:'sim-rules',
+  notes:'Let the audience flip cards at their own pace — pause your talk for 20 seconds. Then hit Score Yourself and let the gauge animate. The score will land between 6 and 9, which is encouraging but imperfect. Use the gap: "The rules you are not following yet are the ones that will save you from your next big mistake." Close with Rule 10: Your taste is the moat. AI can generate code, copy, designs, even strategy — but it cannot know your users the way you do. The founder who ships the most AI-generated code does not win. The founder who makes the best product decisions, amplified by AI, wins. That is Vibe Engineering.'
+}
+];
+
+// ═══════════════════════════════════════════════════════════
+// SIMULATIONS
+// ═══════════════════════════════════════════════════════════
+const SIMULATIONS = {
+
+// ── Slide 2: Vibe Spectrum ─────────────────────────────────
+'sim-vibe-spectrum': (container) => {
+  container.innerHTML = `
+    <div style="height:100%;display:flex;flex-direction:column;padding:18px 20px 14px;gap:10px;box-sizing:border-box;">
+
+      <!-- Slider -->
+      <div style="flex-shrink:0;">
+        <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:8px;">
+          <span>Traditional Engineering</span><span>Pure Vibe</span>
+        </div>
+        <div id="vs-track" style="position:relative;height:16px;background:rgba(255,255,255,.05);border-radius:8px;border:1px solid var(--glass-border);cursor:pointer;">
+          <div id="vs-fill" style="height:100%;width:70%;border-radius:8px;background:linear-gradient(90deg,var(--accent-purple),var(--accent-blue),var(--accent-amber));pointer-events:none;"></div>
+          <!-- Sweet spot marker at 70% -->
+          <div style="position:absolute;top:-6px;left:70%;transform:translateX(-50%);font-size:.55rem;color:var(--accent-amber);font-family:var(--font-mono);white-space:nowrap;pointer-events:none;">★</div>
+          <div id="vs-dot" style="position:absolute;top:50%;left:70%;width:24px;height:24px;background:white;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 16px rgba(251,191,36,.9);cursor:grab;pointer-events:none;"></div>
+        </div>
+        <div id="vs-label" style="text-align:center;margin-top:10px;font-size:.92rem;color:var(--accent-amber);font-family:var(--font-display);font-weight:700;min-height:1.3em;letter-spacing:-.01em;"></div>
+      </div>
+
+      <!-- Pro / Con cards — fill remaining height -->
+      <div id="vs-cards" style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;"></div>
+    </div>`;
+
+  const DATA = {
+    0:   {pros:['Full control over every line','Understand all edge cases','Zero AI surprises'],cons:['Extremely slow velocity','High context-switch cost','Zero leverage from tools'],label:'0% Vibe — All Manual',color:'var(--accent-purple)'},
+    25:  {pros:['Good code understanding','AI speeds up boilerplate','Easy debugging'],cons:['Still slow overall','Not fully leveraged','Missing big velocity gains'],label:'25% Vibe — AI as Autocomplete',color:'var(--accent-purple)'},
+    50:  {pros:['Solid balance','Real velocity gains','Still reviewing code'],cons:['Inconsistent prompting','Missing the stack layer','Ad-hoc workflow'],label:'50% Vibe — Hybrid Mode',color:'var(--accent-blue)'},
+    70:  {pros:['Ship features in hours','AI handles implementation','You focus on product decisions'],cons:['Requires a strong rules file','Must review every diff','Needs context discipline'],label:'70% Vibe — Sweet Spot ✦',color:'var(--accent-amber)'},
+    85:  {pros:['Extreme velocity','Complex systems in days','Frees creative energy'],cons:['High review discipline required','Easy to miss subtle bugs','Demands senior product taste'],label:'85% Vibe — Power User',color:'var(--accent-amber)'},
+    100: {pros:['Maximum speed… at first'],cons:['Accepts broken code','No quality control','Tech-debt avalanche incoming','Lost product intuition'],label:'100% Vibe — Danger Zone',color:'var(--accent-red)'}
+  };
+
+  function dataPct(p) {
+    const keys = [0,25,50,70,85,100];
+    let best = 0;
+    for (const k of keys) { if (p >= k) best = k; }
+    return DATA[best];
+  }
+
+  function renderCards(p) {
+    const d = dataPct(p);
+    const cards = document.getElementById('vs-cards');
+    if (!cards) return;
+    cards.innerHTML = `
+      <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.25);border-radius:14px;padding:16px 14px;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="font-size:.68rem;color:var(--accent-green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;font-family:var(--font-mono);font-weight:600;">Pros</div>
+        ${d.pros.map(p=>`<div style="font-size:.9rem;color:var(--text-secondary);margin-bottom:10px;line-height:1.4;display:flex;gap:8px;"><span style="color:var(--accent-green);flex-shrink:0;">✓</span><span>${p}</span></div>`).join('')}
+      </div>
+      <div style="background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.25);border-radius:14px;padding:16px 14px;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="font-size:.68rem;color:var(--accent-red);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;font-family:var(--font-mono);font-weight:600;">Cons</div>
+        ${d.cons.map(c=>`<div style="font-size:.9rem;color:var(--text-secondary);margin-bottom:10px;line-height:1.4;display:flex;gap:8px;"><span style="color:var(--accent-red);flex-shrink:0;">✗</span><span>${c}</span></div>`).join('')}
+      </div>`;
+    const lbl = document.getElementById('vs-label');
+    if (lbl) { lbl.textContent = d.label; lbl.style.color = d.color; }
+    const dot = document.getElementById('vs-dot');
+    if (dot) dot.style.boxShadow = `0 0 18px ${d.color}`;
+  }
+
+  let pct = 70, dragging = false;
+  const track = document.getElementById('vs-track');
+
+  function setPos(p) {
+    pct = Math.max(0, Math.min(100, p));
+    const fill = document.getElementById('vs-fill');
+    const dot = document.getElementById('vs-dot');
+    if (fill) fill.style.width = pct + '%';
+    if (dot) dot.style.left = pct + '%';
+    renderCards(pct);
+  }
+
+  function pctFrom(e) {
+    const r = track.getBoundingClientRect();
+    return ((( e.touches ? e.touches[0].clientX : e.clientX) - r.left) / r.width) * 100;
+  }
+
+  track.addEventListener('mousedown', e => { dragging=true; setPos(pctFrom(e)); });
+  document.addEventListener('mousemove', e => { if (dragging) setPos(pctFrom(e)); });
+  document.addEventListener('mouseup', () => { dragging=false; });
+  track.addEventListener('click', e => setPos(pctFrom(e)));
+
+  requestAnimationFrame(() => requestAnimationFrame(() => setPos(70)));
+},
+
+// ── Slide 3: Stack ─────────────────────────────────────────
+'sim-stack': (container) => {
+  const layers = [
+    {
+      num:'01', label:'Distribution',
+      tools:['PostHog','Loops / Resend','Stripe','Plausible'],
+      desc:'Analytics, transactional email, payments, and privacy-friendly metrics.',
+      color:'#f87171', glow:'rgba(248,113,113,.25)'
+    },
+    {
+      num:'02', label:'Hosting & Deploy',
+      tools:['Vercel','Netlify','Railway'],
+      desc:'Zero-config deploys from git push. Preview URLs on every PR. Custom domains in one click.',
+      color:'#fbbf24', glow:'rgba(251,191,36,.25)'
+    },
+    {
+      num:'03', label:'Backend & Database',
+      tools:['Supabase Auth','Supabase DB','Supabase Storage','Edge Functions'],
+      desc:'Instant Postgres with row-level security, auth, file storage, and serverless functions — one dashboard.',
+      color:'#34d399', glow:'rgba(52,211,153,.25)'
+    },
+    {
+      num:'04', label:'UI Scaffolding',
+      tools:['v0.dev','Bolt.new','Lovable','create.xyz'],
+      desc:'Describe a screen in plain English. Get production-ready React + Tailwind back in seconds.',
+      color:'#38bdf8', glow:'rgba(56,189,248,.25)'
+    },
+    {
+      num:'05', label:'AI Coding',
+      tools:['Cursor','Claude Code','Windsurf','Copilot'],
+      desc:'Your AI pair programmer. Write, refactor, debug, and navigate your codebase with natural language.',
+      color:'#c084fc', glow:'rgba(192,132,252,.25)'
+    }
+  ];
+
+  let active = null;
+
+  container.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;padding:70px 32px 20px 40px;box-sizing:border-box;gap:16px;">
+      <div id="stk-layers" style="flex:1;display:flex;flex-direction:column;min-height:0;"></div>
+      <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;">
+        <div style="font-size:.58rem;color:var(--text-muted);font-family:var(--font-mono);writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:.12em;margin-bottom:8px;white-space:nowrap;">your idea → live product</div>
+        <div style="flex:1;width:2px;background:linear-gradient(to top,rgba(192,132,252,.7),rgba(56,189,248,.5),rgba(52,211,153,.5),rgba(251,191,36,.5),rgba(248,113,113,.6));border-radius:2px;position:relative;overflow:hidden;">
+          <div style="position:absolute;width:8px;height:8px;background:white;border-radius:50%;left:-3px;box-shadow:0 0 10px white;animation:stackDotAnim 2.8s ease-in-out infinite;"></div>
+        </div>
+        <div style="margin-top:6px;font-size:.7rem;">🚀</div>
+      </div>
+    </div>
+    <style>
+      @keyframes stackDotAnim {
+        0%   { top:100%; opacity:0; }
+        10%  { opacity:1; }
+        90%  { opacity:1; }
+        100% { top:0%; opacity:0; }
+      }
+    </style>`;
+
+  const layersEl = document.getElementById('stk-layers');
+
+  layers.forEach((layer, i) => {
+    const row = document.createElement('div');
+    // Equal-height rows, no gap on parent — use border-bottom as divider
+    row.style.cssText = `
+      flex:1;display:flex;align-items:stretch;gap:14px;cursor:pointer;
+      padding:0 14px 0 0;transition:background .25s;min-height:0;
+      ${i < layers.length-1 ? `border-bottom:1px solid rgba(255,255,255,.06);` : ''}
+    `;
+
+    row.innerHTML = `
+      <div style="width:6px;border-radius:0;background:${layer.color};flex-shrink:0;
+           box-shadow:0 0 16px ${layer.glow};
+           ${i===0?'border-radius:0 0 0 0;':''}"
+      ></div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:12px 0;min-width:0;gap:6px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:.62rem;color:${layer.color};font-family:var(--font-mono);opacity:.65;flex-shrink:0;">${layer.num}</span>
+          <span style="font-family:var(--font-display);font-weight:700;font-size:clamp(1rem,1.8vw,1.3rem);color:var(--text-primary);">${layer.label}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${layer.tools.map(t=>`<span style="font-size:.78rem;padding:3px 12px;border-radius:100px;background:rgba(255,255,255,.06);border:1px solid ${layer.color}55;color:${layer.color};font-family:var(--font-body);">${t}</span>`).join('')}
+        </div>
+        <div style="font-size:.8rem;color:var(--text-muted);line-height:1.5;">${layer.desc}</div>
+      </div>`;
+
+    row.onmouseenter = () => { row.style.background = layer.glow; };
+    row.onmouseleave = () => { row.style.background = 'transparent'; };
+
+    layersEl.appendChild(row);
+  });
+},
+
+// ── Slide 4: Prompt Chain ──────────────────────────────────
+'sim-prompt-chain': (container) => {
+  const nodes = [
+    {label:'Freeform\nIdea',  color:'var(--accent-purple)',
+     prompt:'# Step 1 — Idea Dump\n\n"I want to build a scheduling\napp for freelancers. Clients\nbook slots without signing up.\nFreelancers share availability\nand get reminders. Think\nCalendly for solopreneurs.\n\n[paste your freeform notes here]"'},
+    {label:'PRD',             color:'var(--accent-blue)',
+     prompt:'# Step 2 — PRD Generation\n\n"Turn the above into a\none-page PRD with:\n- Problem statement\n- Primary & secondary users\n- Core features (MVP only)\n- Non-goals for v1\n- Success metrics\n\nBe concise. Bullet points."'},
+    {label:'User\nStories',   color:'var(--accent-green)',
+     prompt:'# Step 3 — Gherkin Stories\n\n"From the PRD, write 5 user\nstories in Gherkin format:\n\nGiven [context]\nWhen [action]\nThen [outcome]\n\nFocus on the core\nbooking flow."'},
+    {label:'Data\nModel',     color:'var(--accent-amber)',
+     prompt:'# Step 4 — Data Model\n\n"Propose a PostgreSQL schema.\nInclude:\n- Table names (snake_case)\n- Columns + types\n- FK relationships\n- Which tables need RLS\n\nOutput as CREATE TABLE."'},
+    {label:'Scaffold\nPrompt',color:'var(--accent-red)',
+     prompt:'# Step 5 — Scaffold\n\n"Using the PRD and schema,\nscaffold a Next.js 15 app:\n- App Router structure\n- Supabase migration file\n- Auth setup (magic link)\n- Core booking page UI\n\nUse shadcn/ui. TypeScript."'}
+  ];
+
+  container.innerHTML = `
+    <div style="height:100%;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;gap:10px;">
+      <div id="pc-svg" style="flex:1;min-height:0;"></div>
+      <div id="pc-tip" style="display:none;flex-shrink:0;background:rgba(0,0,0,.5);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+          <pre id="pc-text" style="font-family:var(--font-mono);font-size:.68rem;color:var(--accent-green);margin:0;white-space:pre-wrap;flex:1;line-height:1.55;"></pre>
+          <button id="pc-copy" style="flex-shrink:0;font-size:.68rem;padding:3px 10px;">Copy</button>
+        </div>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const svgEl = document.getElementById('pc-svg');
+    if (!svgEl) return;
+    const W = svgEl.clientWidth, H = svgEl.clientHeight;
+    const svg = d3.select(svgEl).append('svg').attr('width',W).attr('height',H);
+    const nW = Math.min(108, W/6), nH = 48;
+    const gap = (W - nW) / (nodes.length - 1);
+    const yC = H/2;
+
+    const defs = svg.append('defs');
+    defs.append('marker').attr('id','pcArr').attr('markerWidth',8).attr('markerHeight',6)
+      .attr('refX',6).attr('refY',3).attr('orient','auto')
+      .append('polygon').attr('points','0 0,8 3,0 6').attr('fill','rgba(255,255,255,.25)');
+
+    nodes.forEach((node, i) => {
+      if (i < nodes.length-1) {
+        const line = svg.append('line')
+          .attr('x1',i*gap+nW).attr('y1',yC)
+          .attr('x2',(i+1)*gap).attr('y2',yC)
+          .attr('stroke','rgba(255,255,255,.2)').attr('stroke-width',1.5)
+          .attr('stroke-dasharray','5,4').attr('marker-end','url(#pcArr)')
+          .attr('stroke-dashoffset',20);
+        (function animLine(sel) {
+          sel.transition().duration(1800).ease(d3.easeLinear).attr('stroke-dashoffset',0)
+            .on('end', ()=>{ sel.attr('stroke-dashoffset',20); animLine(sel); });
+        })(line);
+      }
+
+      const g = svg.append('g').style('cursor','pointer');
+      g.append('rect').attr('x',i*gap).attr('y',yC-nH/2).attr('width',nW).attr('height',nH).attr('rx',10)
+        .attr('fill','rgba(255,255,255,.04)').attr('stroke',node.color).attr('stroke-width',1.5);
+      node.label.split('\n').forEach((line,li) => {
+        g.append('text').attr('x',i*gap+nW/2).attr('y',yC-(node.label.includes('\n')?8:0)+li*16)
+          .attr('text-anchor','middle').attr('dominant-baseline','middle')
+          .attr('fill',node.color).attr('font-size','.68rem')
+          .attr('font-family','var(--font-display)').attr('font-weight','600').text(line);
+      });
+
+      let typTimer = null;
+      g.on('click', () => {
+        const tip = document.getElementById('pc-tip');
+        const txt = document.getElementById('pc-text');
+        const btn = document.getElementById('pc-copy');
+        if (!tip || !txt) return;
+        tip.style.display = 'block';
+        tip.style.borderColor = node.color;
+        if (typTimer) clearInterval(typTimer);
+        txt.textContent = '';
+        let idx = 0;
+        typTimer = setInterval(() => {
+          txt.textContent = node.prompt.slice(0, idx);
+          idx += 4;
+          if (idx > node.prompt.length) { txt.textContent = node.prompt; clearInterval(typTimer); }
+        }, 14);
+        btn.textContent = 'Copy';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+        btn.onclick = () => {
+          navigator.clipboard.writeText(node.prompt).catch(()=>{});
+          btn.textContent = '✓ Copied!';
+          btn.style.color = 'var(--accent-green)';
+          btn.style.borderColor = 'var(--accent-green)';
+          setTimeout(()=>{ btn.textContent='Copy'; btn.style.color=''; btn.style.borderColor=''; }, 1500);
+        };
+      });
+      g.on('mouseenter',()=>g.select('rect').attr('fill','rgba(255,255,255,.08)'));
+      g.on('mouseleave',()=>g.select('rect').attr('fill','rgba(255,255,255,.04)'));
+    });
+  }));
+},
+
+// ── Slide 6: MVP Timeline ──────────────────────────────────
+'sim-timeline': (container) => {
+  const phases = [
+    {time:'8:00 AM', name:'Idea Dump',    dur:'15 min',  tool:'Claude / ChatGPT',        human:'Freeform brain dump → PRD output',        color:'var(--accent-purple)'},
+    {time:'8:30 AM', name:'Scaffold',     dur:'30 min',  tool:'v0.dev + Bolt.new + Supabase', human:'Generate UI + create DB schema',      color:'var(--accent-blue)'},
+    {time:'10:00 AM',name:'Connect',      dur:'90 min',  tool:'Cursor + Supabase MCP',   human:'Wire auth, tables, and API routes',        color:'var(--accent-green)'},
+    {time:'12:00 PM',name:'Core Feature', dur:'2 hrs',   tool:'Cursor + Claude Code',    human:'Review, steer, and refine AI output',      color:'var(--accent-amber)'},
+    {time:'2:00 PM', name:'Deploy',       dur:'15 min',  tool:'Vercel + custom domain',  human:'git push → live in under 2 minutes',       color:'var(--accent-red)'},
+    {time:'2:30 PM', name:'First User',   dur:'Ongoing', tool:'PostHog + Loops',         human:'Share link, gather feedback, iterate fast', color:'var(--accent-green)'}
+  ];
+
+  container.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;padding:68px 40px 18px;box-sizing:border-box;gap:14px;">
+      <div style="display:flex;gap:12px;align-items:center;flex-shrink:0;">
+        <button id="tl-play" style="padding:8px 22px;font-size:.85rem;">▶ Play</button>
+        <button id="tl-reset" style="padding:8px 16px;font-size:.82rem;border-color:rgba(255,255,255,.12);color:var(--text-muted);">Reset</button>
+        <div style="margin-left:auto;font-size:.75rem;color:var(--text-muted);font-family:var(--font-mono);">
+          Traditional dev: 3–4 weeks → <span style="color:var(--accent-amber);font-weight:700;">Vibe Engineering: 1 day</span>
+        </div>
+      </div>
+      <div style="flex-shrink:0;padding:0 4px;">
+        <div style="height:3px;background:rgba(255,255,255,.07);border-radius:2px;">
+          <div id="tl-line" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent-purple),var(--accent-green));border-radius:2px;transition:width .5s ease;"></div>
+        </div>
+        <div id="tl-dots" style="display:flex;justify-content:space-between;margin-top:-4px;padding:0 2px;"></div>
+      </div>
+      <div id="tl-detail" style="flex:1;min-height:0;overflow:hidden;"></div>
+    </div>`;
+
+  let cur = -1, timer = null;
+
+  function dots(active) {
+    const el = document.getElementById('tl-dots');
+    if (!el) return;
+    el.innerHTML = phases.map((p,i) => `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;"
+           onclick="window.__tlGo(${i})">
+        <div style="width:13px;height:13px;border-radius:50%;border:2px solid ${i<=active?p.color:'rgba(255,255,255,.14)'};
+             background:${i<=active?p.color:'transparent'};transition:all .35s;
+             box-shadow:${i===active?`0 0 12px ${p.color}`:'none'};"></div>
+        <div style="font-size:.58rem;color:${i<=active?p.color:'var(--text-muted)'};font-family:var(--font-mono);white-space:nowrap;">${p.time}</div>
+      </div>`).join('');
+  }
+
+  function detail(idx) {
+    const el = document.getElementById('tl-detail');
+    if (!el) return;
+    if (idx < 0) {
+      el.innerHTML = `
+        <div style="height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:10px;">
+          ${phases.map(ph=>`
+            <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;
+                 padding:16px 18px;display:flex;flex-direction:column;justify-content:center;opacity:.3;">
+              <div style="font-size:.65rem;font-family:var(--font-mono);color:var(--text-muted);margin-bottom:6px;">${ph.time}</div>
+              <div style="font-family:var(--font-display);font-weight:700;font-size:.95rem;color:var(--text-primary);">${ph.name}</div>
+            </div>`).join('')}
+        </div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div style="height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:10px;">
+        ${phases.map((ph,i)=>`
+          <div style="background:${i<=idx?`rgba(255,255,255,.04)`:'rgba(255,255,255,.02)'};
+               border:1px solid ${i<=idx?ph.color:'rgba(255,255,255,.06)'};border-radius:14px;
+               padding:16px 18px;display:flex;flex-direction:column;justify-content:flex-start;
+               opacity:${i<=idx?1:.25};transition:all .4s;
+               box-shadow:${i===idx?`0 0 24px ${ph.color}30`:'none'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-size:.65rem;font-family:var(--font-mono);color:${i<=idx?ph.color:'var(--text-muted)'};">${ph.time}</span>
+              <span style="font-size:.6rem;background:rgba(255,255,255,.06);border-radius:100px;padding:2px 8px;color:var(--text-muted);">${ph.dur}</span>
+            </div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:clamp(.85rem,1.4vw,1.05rem);color:var(--text-primary);margin-bottom:8px;">${ph.name}</div>
+            <div style="font-size:.72rem;color:var(--accent-blue);margin-bottom:4px;">🛠 ${ph.tool}</div>
+            <div style="font-size:.72rem;color:var(--text-secondary);line-height:1.4;">👤 ${ph.human}</div>
+          </div>`).join('')}
+      </div>`;
+  }
+
+  window.__tlGo = function(idx) {
+    if (timer) { clearInterval(timer); timer=null; const pb=document.getElementById('tl-play'); if(pb) pb.textContent='▶ Play'; }
+    cur = idx;
+    const line=document.getElementById('tl-line'); if(line) line.style.width=(idx/(phases.length-1)*100)+'%';
+    dots(idx); detail(idx);
+  };
+
+  document.getElementById('tl-play').onclick = function() {
+    if (timer) { clearInterval(timer); timer=null; this.textContent='▶ Play'; return; }
+    this.textContent='⏸ Pause';
+    function step() {
+      cur++;
+      if (cur >= phases.length) { clearInterval(timer); timer=null; const pb=document.getElementById('tl-play'); if(pb) pb.textContent='▶ Play'; return; }
+      const line=document.getElementById('tl-line'); if(line) line.style.width=(cur/(phases.length-1)*100)+'%';
+      dots(cur); detail(cur);
+    }
+    step();
+    timer = setInterval(step, 2500);
+  };
+
+  document.getElementById('tl-reset').onclick = function() {
+    if (timer) { clearInterval(timer); timer=null; }
+    const pb=document.getElementById('tl-play'); if(pb) pb.textContent='▶ Play';
+    cur=-1;
+    const line=document.getElementById('tl-line'); if(line) line.style.width='0%';
+    dots(-1); detail(-1);
+  };
+
+  dots(-1); detail(-1);
+},
+
+// ── Slide 7: Distribution Cards ───────────────────────────
+'sim-distribution': (container) => {
+  const items = [
+    {id:'lp',  icon:'🌐', label:'Landing Page', time:'20 min', tool:'v0.dev + Vercel',       desc:'Describe the page, get React + Tailwind. Deploy with one click.',  color:'var(--accent-blue)',   glow:'rgba(56,189,248,.2)'},
+    {id:'wl',  icon:'📋', label:'Waitlist',     time:'5 min',  tool:'Supabase + form',       desc:'One table, one form. Emails collected before you finish coffee.',  color:'var(--accent-purple)', glow:'rgba(192,132,252,.2)'},
+    {id:'an',  icon:'📊', label:'Analytics',    time:'10 min', tool:'PostHog',               desc:'One script tag. See who visits, what they click, where they drop.', color:'var(--accent-amber)',  glow:'rgba(251,191,36,.2)'},
+    {id:'pay', icon:'💳', label:'Payments',     time:'30 min', tool:'Stripe Checkout',       desc:'Stripe Checkout + Supabase edge function. Real revenue, day one.', color:'var(--accent-green)',  glow:'rgba(52,211,153,.2)'},
+    {id:'em',  icon:'✉️', label:'Email',        time:'15 min', tool:'Loops / Resend',        desc:'Trigger welcome emails from a Supabase webhook. Zero backend code.', color:'var(--accent-red)',    glow:'rgba(248,113,113,.2)'}
+  ];
+
+  const enabled = new Set();
+
+  container.innerHTML = `
+    <div style="height:100%;display:flex;flex-direction:column;padding:16px;box-sizing:border-box;gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;flex:1;min-height:0;">
+        ${items.map(it=>`
+          <div id="dc-${it.id}" style="background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.08);
+               border-radius:16px;padding:16px 14px;display:flex;flex-direction:column;gap:10px;
+               transition:all .35s;cursor:pointer;" onclick="window.__distToggle('${it.id}')">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <span style="font-size:1.5rem;">${it.icon}</span>
+              <label class="tog" style="pointer-events:none;">
+                <input type="checkbox" id="chk-${it.id}" style="pointer-events:none;">
+                <span class="tog-sl"></span>
+              </label>
+            </div>
+            <div>
+              <div style="font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--text-primary);margin-bottom:3px;">${it.label}</div>
+              <div style="font-size:.65rem;color:${it.color};font-family:var(--font-mono);margin-bottom:8px;">${it.tool}</div>
+              <div style="font-size:.7rem;color:var(--text-muted);line-height:1.5;">${it.desc}</div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;">
+              <span id="dc-status-${it.id}" style="font-size:.65rem;color:var(--text-muted);font-family:var(--font-mono);">not started</span>
+              <span style="font-size:.65rem;background:rgba(255,255,255,.05);border-radius:100px;padding:2px 8px;color:${it.color};">${it.time}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:14px;">
+        <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;">
+          <div id="dist-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-green));border-radius:3px;transition:width .4s ease;"></div>
+        </div>
+        <div id="dist-count" style="font-family:var(--font-mono);font-size:.78rem;color:var(--text-muted);white-space:nowrap;">0 / 5 ready</div>
+        <div id="dist-launch" style="display:none;font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--accent-green);text-shadow:var(--glow-green);">🚀 Ship it!</div>
+      </div>
+    </div>`;
+
+  window.__distToggle = function(id) {
+    const chk = document.getElementById(`chk-${id}`);
+    const card = document.getElementById(`dc-${id}`);
+    const status = document.getElementById(`dc-status-${id}`);
+    const item = items.find(x=>x.id===id);
+    if (!chk || !card || !item) return;
+
+    chk.checked = !chk.checked;
+    if (chk.checked) {
+      enabled.add(id);
+      card.style.borderColor = item.color;
+      card.style.background = item.glow;
+      card.style.boxShadow = `0 0 20px ${item.glow}`;
+      if (status) { status.textContent = '✓ live'; status.style.color = item.color; }
+    } else {
+      enabled.delete(id);
+      card.style.borderColor = 'rgba(255,255,255,.08)';
+      card.style.background = 'rgba(255,255,255,.03)';
+      card.style.boxShadow = 'none';
+      if (status) { status.textContent = 'not started'; status.style.color = 'var(--text-muted)'; }
+    }
+
+    const bar = document.getElementById('dist-bar');
+    const count = document.getElementById('dist-count');
+    const launch = document.getElementById('dist-launch');
+    const n = enabled.size;
+    if (bar) bar.style.width = (n / items.length * 100) + '%';
+    if (count) count.textContent = `${n} / 5 ready`;
+    if (launch) launch.style.display = n === items.length ? 'block' : 'none';
+  };
+},
+
+// ── Slide 8: Codebase Graph ────────────────────────────────
+'sim-codebase-graph': (container) => {
+  container.innerHTML = `
+    <div style="height:100%;display:flex;gap:0;padding:14px;box-sizing:border-box;gap:12px;">
+      <div id="cbg-svg-wrap" style="flex:1;min-width:0;position:relative;border-radius:14px;overflow:hidden;background:rgba(0,0,0,.2);border:1px solid var(--glass-border);"></div>
+      <div id="cbg-info" style="flex:0 0 220px;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;">
+          <div style="font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;font-family:var(--font-mono);margin-bottom:8px;">Legend</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            ${[['Page','var(--accent-blue)'],['Component','var(--accent-purple)'],['Hook','var(--accent-amber)'],['Lib / Util','var(--accent-green)'],['Action','var(--accent-red)']].map(([label,color])=>`
+            <div style="display:flex;align-items:center;gap:7px;">
+              <div style="width:10px;height:10px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+              <span style="font-size:.68rem;color:var(--text-secondary);font-family:var(--font-body);">${label}</span>
+            </div>`).join('')}
+          </div>
+        </div>
+        <div id="cbg-node-info" style="flex:1;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+          <div style="font-size:.65rem;color:var(--text-muted);line-height:1.6;">Click any node to see its connections and role in the codebase.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:12px;padding:12px;">
+          <div style="font-size:.6rem;color:var(--accent-amber);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);margin-bottom:6px;">Hot zones for CLAUDE.md</div>
+          <div style="font-size:.68rem;color:var(--text-secondary);line-height:1.6;">Larger nodes = more connections. These are the files AI needs to understand best.</div>
+        </div>
+      </div>
+    </div>`;
+
+  const TYPES = {
+    page:      {color:'#38bdf8', label:'Page'},
+    component: {color:'#c084fc', label:'Component'},
+    hook:      {color:'#fbbf24', label:'Hook'},
+    lib:       {color:'#34d399', label:'Lib / Util'},
+    action:    {color:'#f87171', label:'Action'}
+  };
+
+  const nodes = [
+    {id:'layout',        type:'page',      name:'layout.tsx',         desc:'Root layout — wraps every page. Highest fan-in in the whole app.'},
+    {id:'home',          type:'page',      name:'page.tsx',           desc:'Home page. Entry point for unauthenticated users.'},
+    {id:'projects-page', type:'page',      name:'projects/page.tsx',  desc:'Lists all user projects. Heavy data dependency.'},
+    {id:'tasks-page',    type:'page',      name:'tasks/page.tsx',     desc:'Task view for a single project.'},
+    {id:'auth-page',     type:'page',      name:'auth/page.tsx',      desc:'Sign-in and sign-up flows via Supabase Auth.'},
+    {id:'navbar',        type:'component', name:'Navbar',             desc:'Global nav. Reads user state — used on every page.'},
+    {id:'project-card',  type:'component', name:'ProjectCard',        desc:'Used in project list and dashboard. Shared UI unit.'},
+    {id:'task-list',     type:'component', name:'TaskList',           desc:'Renders task rows. Calls useTasks hook.'},
+    {id:'task-item',     type:'component', name:'TaskItem',           desc:'Single task row with toggle and due date.'},
+    {id:'auth-form',     type:'component', name:'AuthForm',           desc:'Login / signup form. Calls Supabase Auth directly.'},
+    {id:'modal',         type:'component', name:'Modal',              desc:'Generic modal wrapper. Used by many features.'},
+    {id:'use-user',      type:'hook',      name:'useUser',            desc:'Central auth hook. Called by Navbar, layout, and guards.'},
+    {id:'use-projects',  type:'hook',      name:'useProjects',        desc:'Fetches and caches project list. Used in 3 places.'},
+    {id:'use-tasks',     type:'hook',      name:'useTasks',           desc:'Fetches tasks for a project. Used by TaskList.'},
+    {id:'supabase',      type:'lib',       name:'supabase.ts',        desc:'Client singleton. Imported by almost every hook and action.'},
+    {id:'utils',         type:'lib',       name:'utils.ts',           desc:'Date formatting, string helpers. Pure utility functions.'},
+    {id:'types',         type:'lib',       name:'types.ts',           desc:'Shared TypeScript interfaces. Imported across all layers.'},
+    {id:'proj-actions',  type:'action',    name:'projectActions.ts',  desc:'Server actions for creating and updating projects.'},
+    {id:'task-actions',  type:'action',    name:'taskActions.ts',     desc:'Server actions for task CRUD and status toggling.'}
+  ];
+
+  const links = [
+    ['layout','navbar'],['layout','use-user'],['layout','supabase'],
+    ['home','navbar'],['home','modal'],
+    ['projects-page','project-card'],['projects-page','use-projects'],['projects-page','proj-actions'],
+    ['tasks-page','task-list'],['tasks-page','use-tasks'],['tasks-page','task-actions'],
+    ['auth-page','auth-form'],
+    ['navbar','use-user'],
+    ['project-card','modal'],['project-card','types'],
+    ['task-list','task-item'],['task-list','use-tasks'],
+    ['task-item','task-actions'],['task-item','utils'],
+    ['auth-form','supabase'],
+    ['use-user','supabase'],['use-user','types'],
+    ['use-projects','supabase'],['use-projects','types'],
+    ['use-tasks','supabase'],['use-tasks','types'],
+    ['proj-actions','supabase'],['proj-actions','types'],
+    ['task-actions','supabase'],['task-actions','types']
+  ];
+
+  // Compute degree
+  const degree = {};
+  nodes.forEach(n => degree[n.id] = 0);
+  links.forEach(([a,b]) => { degree[a]++; degree[b]++; });
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const wrap = document.getElementById('cbg-svg-wrap');
+    if (!wrap) return;
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+
+    const svg = d3.select(wrap).append('svg').attr('width',W).attr('height',H);
+
+    const defs = svg.append('defs');
+    defs.append('marker').attr('id','cbgArrow').attr('markerWidth',6).attr('markerHeight',5)
+      .attr('refX',14).attr('refY',2.5).attr('orient','auto')
+      .append('polygon').attr('points','0 0,6 2.5,0 5').attr('fill','rgba(255,255,255,.55)');
+
+    function nodeR(d) { return 7 + degree[d.id] * 2.2; }
+    function nodeColor(d) { return TYPES[d.type].color; }
+
+    // One shared array — force simulation resolves source/target strings to node
+    // objects in-place; the link selection must reference the same objects.
+    const linkData = links.map(([s,t]) => ({source:s, target:t}));
+
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(linkData).id(d=>d.id).distance(75).strength(.5))
+      .force('charge', d3.forceManyBody().strength(-220))
+      .force('center', d3.forceCenter(W/2, H/2))
+      .force('collision', d3.forceCollide().radius(d => nodeR(d)+12));
+
+    const link = svg.append('g').selectAll('line')
+      .data(linkData)
+      .join('line')
+      .attr('stroke','rgba(255,255,255,.45)').attr('stroke-width',1.5)
+      .attr('marker-end','url(#cbgArrow)');
+
+    const node = svg.append('g').selectAll('g')
+      .data(nodes).join('g')
+      .style('cursor','pointer')
+      .call(d3.drag()
+        .on('start', (event,d) => { if (!event.active) simulation.alphaTarget(.3).restart(); d.fx=d.x; d.fy=d.y; })
+        .on('drag',  (event,d) => { d.fx=event.x; d.fy=event.y; })
+        .on('end',   (event,d) => { if (!event.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+    node.append('circle')
+      .attr('r', d => nodeR(d))
+      .attr('fill', d => nodeColor(d) + '33')
+      .attr('stroke', d => nodeColor(d))
+      .attr('stroke-width', 1.5);
+
+    node.append('text')
+      .attr('text-anchor','middle').attr('dy','0.35em')
+      .attr('font-size', d => Math.max(7, Math.min(9, nodeR(d)*0.7)))
+      .attr('fill','white').attr('pointer-events','none')
+      .text(d => d.name.replace('.tsx','').replace('.ts',''));
+
+    let selectedId = null;
+    node.on('click', (event, d) => {
+      selectedId = selectedId === d.id ? null : d.id;
+      updateHighlight();
+      updateInfo(selectedId ? d : null);
+    });
+
+    function connectedIds(id) {
+      const s = new Set([id]);
+      links.forEach(([a,b]) => { if(a===id) s.add(b); if(b===id) s.add(a); });
+      return s;
+    }
+
+    function updateHighlight() {
+      if (!selectedId) {
+        node.select('circle').attr('stroke-opacity',1).attr('fill-opacity',1);
+        link.attr('stroke','rgba(255,255,255,.38)').attr('stroke-width',1.5);
+        return;
+      }
+      const connected = connectedIds(selectedId);
+      node.select('circle')
+        .attr('stroke-opacity', d => connected.has(d.id) ? 1 : 0.2)
+        .attr('fill-opacity',   d => connected.has(d.id) ? 1 : 0.15);
+      const selType = TYPES[nodes.find(n=>n.id===selectedId).type].color;
+      link
+        .attr('stroke', l => (l.source.id===selectedId||l.target.id===selectedId) ? selType : 'rgba(255,255,255,.08)')
+        .attr('stroke-width', l => (l.source.id===selectedId||l.target.id===selectedId) ? 2.5 : 1);
+    }
+
+    function updateInfo(d) {
+      const el = document.getElementById('cbg-node-info');
+      if (!el) return;
+      if (!d) {
+        el.innerHTML = '<div style="font-size:.65rem;color:var(--text-muted);line-height:1.6;">Click any node to see its connections and role in the codebase.</div>';
+        return;
+      }
+      const connected = connectedIds(d.id);
+      const t = TYPES[d.type];
+      el.innerHTML = `
+        <div style="width:10px;height:10px;border-radius:50%;background:${t.color};margin:0 auto 8px;box-shadow:0 0 10px ${t.color};"></div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:.82rem;color:white;margin-bottom:3px;">${d.name}</div>
+        <div style="font-size:.6rem;color:${t.color};margin-bottom:8px;font-family:var(--font-mono);">${t.label}</div>
+        <div style="font-size:.68rem;color:var(--text-secondary);line-height:1.55;margin-bottom:8px;">${d.desc}</div>
+        <div style="font-size:.62rem;color:var(--text-muted);font-family:var(--font-mono);">${connected.size - 1} connections · degree ${degree[d.id]}</div>`;
+    }
+
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      node.attr('transform', d => `translate(${Math.max(nodeR(d), Math.min(W-nodeR(d), d.x))},${Math.max(nodeR(d), Math.min(H-nodeR(d), d.y))})`);
+    });
+  }));
+},
+
+// ── Slide 9: Rules + Gauge ─────────────────────────────────
+'sim-rules': (container) => {
+  const rules = [
+    {n:1,  title:'Always review before committing',  body:'Never blindly accept AI output. Read every diff.',                  color:'var(--accent-blue)'},
+    {n:2,  title:'Write rules, not corrections',     body:'Encode what you\'ve learned in your rules file.',                   color:'var(--accent-purple)'},
+    {n:3,  title:'Prompt with context',              body:'Paste the relevant file, not just the question.',                   color:'var(--accent-amber)'},
+    {n:4,  title:'One feature per prompt',           body:'Don\'t ask AI to do everything at once.',                           color:'var(--accent-green)'},
+    {n:5,  title:'Keep PRD current',                 body:'Update it as you pivot — it\'s your system context.',               color:'var(--accent-red)'},
+    {n:6,  title:'RLS from day one',                 body:'Row Level Security in Supabase — never skip it.',                   color:'var(--accent-blue)'},
+    {n:7,  title:'Test the happy path first',        body:'Ship the core loop before handling edge cases.',                    color:'var(--accent-purple)'},
+    {n:8,  title:'Version control everything',       body:'Commit before every AI-generated change.',                          color:'var(--accent-amber)'},
+    {n:9,  title:'Describe the why, not the how',    body:'AI figures out implementation — you supply intent.',                 color:'var(--accent-green)'},
+    {n:10, title:'Your taste is the moat',           body:'AI can code it. Only you know what\'s right.',                      color:'var(--accent-red)'}
+  ];
+
+  container.innerHTML = `
+    <div style="height:100%;display:flex;flex-direction:column;padding:68px 46px 20px;box-sizing:border-box;gap:14px;">
+      <div id="rules-grid" style="flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(2,1fr);gap:9px;min-height:0;"></div>
+      <div style="flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:22px;padding-top:4px;">
+        <button id="rules-score-btn" style="padding:9px 22px;">Score Yourself</button>
+        <div id="rules-gauge" style="display:none;align-items:center;gap:14px;">
+          <svg id="gauge-svg" width="120" height="72"></svg>
+          <div>
+            <div id="gauge-label" style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;color:var(--accent-green);"></div>
+            <div style="font-size:.65rem;color:var(--text-muted);">Keep going → Slide 9 / 9</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const grid = document.getElementById('rules-grid');
+
+  rules.forEach(rule => {
+    const card = document.createElement('div');
+    card.className = 'flip-card';
+    card.style.cssText = 'position:relative;';
+    card.innerHTML = `
+      <div class="flip-inner">
+        <div class="flip-front" style="border-color:${rule.color}35;">
+          <div style="font-family:var(--font-display);font-size:1.7rem;font-weight:700;color:${rule.color};opacity:.55;">${rule.n}</div>
+        </div>
+        <div class="flip-back" style="border:1.5px solid ${rule.color}55;">
+          <div style="font-size:.55rem;color:${rule.color};font-family:var(--font-mono);font-weight:700;">RULE ${rule.n}</div>
+          <div style="font-size:.64rem;font-family:var(--font-display);font-weight:700;color:var(--text-primary);line-height:1.3;">${rule.title}</div>
+          <div style="font-size:.56rem;color:var(--text-secondary);line-height:1.4;">${rule.body}</div>
+        </div>
+      </div>`;
+    card.onclick = () => card.classList.toggle('flipped');
+    grid.appendChild(card);
+  });
+
+  document.getElementById('rules-score-btn').onclick = () => {
+    const gaugeEl = document.getElementById('rules-gauge');
+    const label = document.getElementById('gauge-label');
+    if (!gaugeEl || !label) return;
+    gaugeEl.style.display = 'flex';
+    const score = 6 + Math.floor(Math.random()*4);
+    label.textContent = `${score} / 10`;
+    label.style.color = score>=7 ? 'var(--accent-green)' : 'var(--accent-amber)';
+
+    const svg = d3.select('#gauge-svg');
+    svg.selectAll('*').remove();
+    const W=120, H=70, r=50, cx=W/2, cy=H-4;
+    const startA = -Math.PI/2*1.2, fullA = Math.PI*1.2;
+
+    const bgArc = d3.arc().innerRadius(r-12).outerRadius(r)
+      .startAngle(startA).endAngle(startA+fullA);
+    svg.append('path').attr('d',bgArc()).attr('transform',`translate(${cx},${cy})`).attr('fill','rgba(255,255,255,.06)');
+
+    const arcColor = score>=7 ? 'var(--accent-green)' : score>=4 ? 'var(--accent-amber)' : 'var(--accent-red)';
+    const arc = d3.arc().innerRadius(r-12).outerRadius(r).startAngle(startA);
+    const path = svg.append('path').attr('transform',`translate(${cx},${cy})`).attr('fill',arcColor);
+    const targetEnd = startA + (score/10)*fullA;
+    const interp = d3.interpolate(startA, targetEnd);
+    path.transition().duration(1100).ease(d3.easeCubicOut)
+      .attrTween('d', ()=> t => arc.endAngle(interp(t))());
+
+    const needle = svg.append('line')
+      .attr('x1',cx).attr('y1',cy).attr('stroke','white').attr('stroke-width',2.5)
+      .attr('stroke-linecap','round');
+    const ni = d3.interpolate(startA, targetEnd);
+    needle.transition().duration(1100).ease(d3.easeCubicOut)
+      .attrTween('x2', ()=> t => cx+(r-6)*Math.cos(ni(t)-Math.PI/2))
+      .attrTween('y2', ()=> t => cy+(r-6)*Math.sin(ni(t)-Math.PI/2));
+    needle.attr('x2', cx+(r-6)*Math.cos(startA-Math.PI/2))
+          .attr('y2', cy+(r-6)*Math.sin(startA-Math.PI/2));
+
+    svg.append('circle').attr('cx',cx).attr('cy',cy).attr('r',5).attr('fill','white');
+
+    ['0','5','10'].forEach((lbl,i) => {
+      const a = startA + (i/2)*fullA - Math.PI/2;
+      const tx = cx+(r+8)*Math.cos(a), ty = cy+(r+8)*Math.sin(a);
+      svg.append('text').attr('x',tx).attr('y',ty).attr('text-anchor','middle')
+        .attr('fill','var(--text-muted)').attr('font-size','.5rem')
+        .attr('font-family','var(--font-mono)').text(lbl);
+    });
+  };
+}
+
+}; // end SIMULATIONS
+
+// ═══════════════════════════════════════════════════════════
+// APP ENGINE
+// ═══════════════════════════════════════════════════════════
+const app = {
+  cur: 1,
+  total: SLIDES.length,
+  notesOpen: false,
+  overviewOpen: false,
+  gotoOpen: false,
+  cleanups: [],
+
+  init() {
+    this.buildSlides();
+    this.bindKeys();
+    window.addEventListener('hashchange', () => {
+      const n = parseInt(window.location.hash.replace('#/',''));
+      if (!isNaN(n) && n!==this.cur) this.goTo(n);
+    });
+    document.getElementById('goto-modal').addEventListener('click', e => {
+      if (e.target.id==='goto-modal') this.closeGoto();
+    });
+    const n = parseInt(window.location.hash.replace('#/','')) || 1;
+    this.goTo(Math.max(1,Math.min(this.total,n)));
+  },
+
+  buildSlides() {
+    const viewer = document.getElementById('slide-viewer');
+    SLIDES.forEach(slide => {
+      const el = document.createElement('div');
+      el.className = 'slide-container';
+      el.id = `slide-${slide.id}`;
+      el.innerHTML = this.renderLayout(slide);
+      viewer.appendChild(el);
+    });
+  },
+
+  renderLayout(s) {
+    if (s.layout==='title') return `
+      <div class="slide-bg layout-title" style="width:100%;height:100%;">
+        <div class="title-glow-ring"></div>
+        <div class="slide-content">
+          <div class="title-badge">Beta.mn Cohort · 2025</div>
+          <h1>${s.title}</h1>
+          <div class="subtitle">${s.subtitle}</div>
+          <div class="slide-footer">${s.footer}</div>
+        </div>
+      </div>`;
+
+    if (s.layout==='split') return `
+      <div class="slide-bg layout-split" style="width:100%;height:100%;">
+        <div class="slide-content">
+          <h2>${s.title}</h2>
+          <div class="col-split">
+            <div class="col-text">${s.content}</div>
+            <div class="col-visual" id="sim-host-${s.id}"></div>
+          </div>
+        </div>
+      </div>`;
+
+    if (s.layout==='full') return `
+      <div class="slide-bg layout-full${s.epic?' epic':''}" style="width:100%;height:100%;position:relative;">
+        <div class="sim-title-badge">${s.title}</div>
+        <div class="full-sim-host" id="sim-host-${s.id}"></div>
+      </div>`;
+
+    if (s.layout==='code') return `
+      <div class="slide-bg layout-code" style="width:100%;height:100%;">
+        <div class="slide-content">
+          <h2>${s.title}</h2>
+          <div class="col-split">
+            <div class="col-text">${s.content}</div>
+            <div class="code-visual">
+              <pre><code class="language-bash">${s.code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    return `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">Unknown layout</div>`;
+  },
+
+  goTo(n) {
+    this.cur = Math.max(1, Math.min(this.total, n));
+
+    this.cleanups.forEach(fn => { try { fn(); } catch(e){} });
+    this.cleanups = [];
+
+    document.querySelectorAll('.slide-container').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById(`slide-${this.cur}`);
+    if (el) {
+      el.classList.add('active');
+      el.querySelectorAll('pre code').forEach(block => {
+        if (!block.dataset.highlighted) hljs.highlightElement(block);
+      });
+    }
+
+    const slide = SLIDES[this.cur-1];
+    if (slide && slide.simulation) {
+      const host = document.getElementById(`sim-host-${slide.id}`);
+      if (host) {
+        host.innerHTML = '';
+        const fn = SIMULATIONS[slide.simulation];
+        if (fn) requestAnimationFrame(() => fn(host));
+      }
+    }
+
+    const pct = ((this.cur-1)/(this.total-1))*100;
+    document.getElementById('progress-fill').style.width = pct+'%';
+    document.getElementById('slide-counter').textContent = `${this.cur} / ${this.total}`;
+    document.getElementById('notes-text').textContent = slide ? slide.notes : '';
+    window.location.hash = `/${this.cur}`;
+  },
+
+  bindKeys() {
+    document.addEventListener('keydown', e => {
+      if (this.gotoOpen) {
+        if (e.key==='Escape') this.closeGoto();
+        if (e.key==='Enter') {
+          const v = parseInt(document.getElementById('goto-input').value);
+          if (!isNaN(v)) { this.goTo(v); this.closeGoto(); }
+        }
+        return;
+      }
+      if (this.overviewOpen && e.key==='Escape') { this.toggleOverview(); return; }
+      switch(e.key) {
+        case 'ArrowRight': case ' ': e.preventDefault(); this.goTo(this.cur+1); break;
+        case 'ArrowLeft': e.preventDefault(); this.goTo(this.cur-1); break;
+        case 'f': case 'F':
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+          else document.exitFullscreen().catch(()=>{});
+          break;
+        case 's': case 'S':
+          this.notesOpen = !this.notesOpen;
+          document.getElementById('notes-panel').classList.toggle('open', this.notesOpen);
+          break;
+        case 'o': case 'O': this.toggleOverview(); break;
+        case 'g': case 'G': this.openGoto(); break;
+        case 'Escape':
+          if (this.notesOpen) { this.notesOpen=false; document.getElementById('notes-panel').classList.remove('open'); }
+          break;
+      }
+    });
+  },
+
+  toggleOverview() {
+    this.overviewOpen = !this.overviewOpen;
+    const modal = document.getElementById('overview-modal');
+    modal.classList.toggle('open', this.overviewOpen);
+    if (this.overviewOpen) {
+      const grid = document.getElementById('overview-grid');
+      grid.innerHTML = '';
+      SLIDES.forEach(s => {
+        const card = document.createElement('div');
+        card.className = `ov-card${s.id===this.cur?' current':''}`;
+        card.innerHTML = `<div class="ov-num">Slide ${s.id}</div><div class="ov-title">${s.title}</div>`;
+        card.onclick = () => { this.goTo(s.id); this.toggleOverview(); };
+        grid.appendChild(card);
+      });
+    }
+  },
+
+  openGoto() {
+    this.gotoOpen = true;
+    document.getElementById('goto-modal').classList.add('open');
+    const inp = document.getElementById('goto-input');
+    inp.value = this.cur;
+    setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  },
+
+  closeGoto() {
+    this.gotoOpen = false;
+    document.getElementById('goto-modal').classList.remove('open');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
+</body>
+</html>
